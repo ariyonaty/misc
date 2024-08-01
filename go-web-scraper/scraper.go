@@ -1,14 +1,47 @@
 package main
 
 import (
+	"flag"
 	"log"
+	"net"
+	"net/url"
+	"os"
+	"strings"
 
 	"github.com/gocolly/colly/v2"
 )
 
+var defaultSite string = "https://www.scrapethissite.com/pages/simple/"
+
 func main() {
+	// setup CLI flags
+	site := flag.String("site", "", "site to scrape")
+	flag.Parse()
+
+	// check if URL passed
+	if *site == "" {
+		log.Fatalln("Usage: ", os.Args[0], "-site <SITE>")
+	}
+
+	// Ensure input formatted correctly
+	domain := *site
+	if !strings.HasPrefix(*site, "https://") {
+		domain = "https://" + *site
+	}
+
+	u, err := url.Parse(domain)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	// check if domain resolves
+	_, err = net.LookupIP(u.Host)
+	if err != nil {
+		log.Fatalln("Invalid URL: ", u.Host)
+	}
+
+	// Colly configuration
 	c := colly.NewCollector(
-		colly.AllowedDomains("ariyonaty.com", "www.ariyonaty.com"),
+		colly.AllowedDomains(u.Host),
 	)
 
 	c.OnHTML("a[href]", func(h *colly.HTMLElement) {
@@ -34,9 +67,5 @@ func main() {
 		log.Println("Scraped: ", r.Request.URL)
 	})
 
-	domains := []string{"https://ariyonaty.com/"}
-	for _, domain := range domains {
-		log.Println("Scraping: ", domain)
-		c.Visit(domain)
-	}
+	c.Visit(domain)
 }
